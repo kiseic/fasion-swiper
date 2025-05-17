@@ -10,14 +10,20 @@ export async function GET(request: Request) {
     const url = new URL(request.url)
     const gender = url.searchParams.get("gender") || "female"
     const useLocal = url.searchParams.get("useLocal") === "true"
+    const ratio = parseInt(url.searchParams.get("ratio") || "0", 10) // Pexels percentage
 
-    if (useLocal) {
-      // Fetch photos from local image directory
+    // If ratio is 0 or useLocal is true, use only local images
+    if (ratio === 0 || useLocal) {
       return NextResponse.json(await getLocalPhotos(gender))
-    } else {
-      // Fetch photos from Pexels API
+    }
+    
+    // If ratio is 100, use only Pexels
+    if (ratio === 100) {
       return await getPexelsPhotos(gender)
     }
+    
+    // Mix both sources based on ratio
+    return await getMixedPhotos(gender, ratio)
   } catch (error) {
     console.error("Error fetching photos:", error)
     return NextResponse.json({ error: `Failed to fetch photos: ${error.message}` }, { status: 500 })
@@ -156,6 +162,45 @@ function shuffleArray<T>(array: T[]): T[] {
     ;[newArray[i], newArray[j]] = [newArray[j], newArray[i]]
   }
   return newArray
+}
+
+// Mix photos from both sources based on ratio
+async function getMixedPhotos(gender: string, pexelsRatio: number) {
+  try {
+    // Calculate how many photos from each source
+    const totalPhotos = 30
+    const pexelsCount = Math.round((totalPhotos * pexelsRatio) / 100)
+    const localCount = totalPhotos - pexelsCount
+    
+    const photos: any[] = []
+    
+    // Get Pexels photos if API key is available
+    if (process.env.PEXELS_API_KEY && pexelsCount > 0) {
+      try {
+        const pexelsResponse = await getPexelsPhotos(gender)
+        if (pexelsResponse.status === 200) {
+          const pexelsData = await pexelsResponse.json()
+          photos.push(...pexelsData.slice(0, pexelsCount))
+        }
+      } catch (error) {
+        console.warn("Pexels API error, falling back to local:", error)
+      }
+    }
+    
+    // Get local photos to fill the rest
+    const localPhotos = await getLocalPhotos(gender)
+    const remainingCount = totalPhotos - photos.length
+    if (remainingCount > 0) {
+      photos.push(...localPhotos.slice(0, remainingCount))
+    }
+    
+    // Shuffle the combined array
+    return shuffleArray(photos)
+  } catch (error) {
+    console.error("Error mixing photos:", error)
+    // Fallback to local photos
+    return await getLocalPhotos(gender)
+  }
 }
 
 // Generate alt text for images based on filename and gender

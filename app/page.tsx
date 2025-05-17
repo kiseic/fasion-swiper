@@ -1,10 +1,17 @@
+"use client"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, Globe, HardDrive } from "lucide-react"
+import { useState } from "react"
+import { Slider } from "@/components/ui/slider"
+import { Label } from "@/components/ui/label"
 
 export default function Home() {
+  const [sourceRatio, setSourceRatio] = useState<number[]>([30]) // Default 30% Pexels, 70% Local
+
   return (
     <main className="min-h-screen flex flex-col">
       {/* ヘッダー */}
@@ -25,10 +32,50 @@ export default function Home() {
             <p className="mt-4 text-lg text-muted-foreground">まずは、見たいファッションの性別を選んでください</p>
           </div>
 
+          {/* 画像ソース設定 */}
+          <div className="mb-8 glass-card p-6 w-full max-w-md mx-auto mt-8">
+            <h3 className="font-semibold mb-4 flex items-center justify-center">
+              <Globe className="h-5 w-5 mr-2" />
+              画像ソースの設定
+            </h3>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="flex items-center">
+                    <Globe className="h-4 w-4 mr-1" />
+                    Pexels API
+                  </span>
+                  <span className="font-medium">{sourceRatio[0]}%</span>
+                </div>
+                <Slider
+                  value={sourceRatio}
+                  onValueChange={setSourceRatio}
+                  max={100}
+                  step={10}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-sm">
+                  <span className="flex items-center">
+                    <HardDrive className="h-4 w-4 mr-1" />
+                    ローカル画像
+                  </span>
+                  <span className="font-medium">{100 - sourceRatio[0]}%</span>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground text-center">
+                {sourceRatio[0] === 0 
+                  ? "ローカル画像のみ使用" 
+                  : sourceRatio[0] === 100 
+                  ? "Pexels APIのみ使用" 
+                  : `Pexels ${sourceRatio[0]}% / ローカル ${100 - sourceRatio[0]}%`}
+              </p>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-6 mt-10">
             <Card className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
               <CardContent className="p-0">
-                <Link href="/swipe?gender=male" className="block">
+                <Link href={`/swipe?gender=male&ratio=${sourceRatio[0]}`} className="block">
                   <div className="relative aspect-[3/4] w-full">
                     <Image
                       src="/placeholder.svg?height=400&width=300"
@@ -49,7 +96,7 @@ export default function Home() {
 
             <Card className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
               <CardContent className="p-0">
-                <Link href="/swipe?gender=female" className="block">
+                <Link href={`/swipe?gender=female&ratio=${sourceRatio[0]}`} className="block">
                   <div className="relative aspect-[3/4] w-full">
                     <Image
                       src="/placeholder.svg?height=400&width=300"

@@ -22,6 +22,7 @@ export default function SwipeContainer() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const gender = searchParams.get("gender") || "female"
+  const ratio = searchParams.get("ratio") || "30"
 
   const childRefs = useRef<any[]>([])
 
@@ -43,8 +44,8 @@ export default function SwipeContainer() {
   const fetchPhotos = async () => {
     try {
       setLoading(true)
-      // ローカルイメージディレクトリから画像を取得
-      const response = await fetch(`/api/photos?gender=${gender}&useLocal=true`)
+      // Fetch photos with specified ratio
+      const response = await fetch(`/api/photos?gender=${gender}&ratio=${ratio}`)
 
       if (!response.ok) {
         throw new Error(`API error: ${response.status} ${response.statusText}`)
