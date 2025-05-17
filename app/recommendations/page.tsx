@@ -133,8 +133,11 @@ export default function RecommendationsPage() {
 
   const handleCustomPrompt = async () => {
     if (likedPhotos.length > 0 && customPrompt.trim()) {
+      // Store the current prompt before clearing
+      const currentPrompt = customPrompt
+      
       // Add user message
-      const newMessages = [...chatMessages, { role: "user", content: customPrompt }]
+      const newMessages = [...chatMessages, { role: "user", content: currentPrompt }]
       setChatMessages(newMessages)
       setCustomPrompt("")
       setIsTyping(true)
@@ -148,12 +151,19 @@ export default function RecommendationsPage() {
           },
           body: JSON.stringify({
             messages: newMessages,
-            userPrompt: customPrompt,
+            userPrompt: currentPrompt,
             gender: gender,
           }),
         })
         
+        console.log("Chat response status:", response.status)
+        
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`)
+        }
+        
         const data = await response.json()
+        console.log("Chat response data:", data)
         
         // Add AI response
         setChatMessages([...newMessages, { 
@@ -161,9 +171,10 @@ export default function RecommendationsPage() {
           content: data.message 
         }])
         
-        // Get recommendations
-        await fetchRecommendations(likedPhotos, customPrompt)
+        // Get recommendations with the current prompt
+        await fetchRecommendations(likedPhotos, currentPrompt)
       } catch (error) {
+        console.error("Chat error:", error)
         setChatMessages([...newMessages, { 
           role: "assistant", 
           content: "あっ、ちょっと調子が悪いみたい...😅 もう一回試してみてくれる？" 
