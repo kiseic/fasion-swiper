@@ -12,9 +12,13 @@ export async function GET(request: Request) {
     const useLocal = url.searchParams.get("useLocal") === "true"
     const ratio = parseInt(url.searchParams.get("ratio") || "0", 10) // Pexels percentage
 
+    console.log(`GET /api/photos - gender: ${gender}, useLocal: ${useLocal}, ratio: ${ratio}`)
+
     // If ratio is 0 or useLocal is true, use only local images
     if (ratio === 0 || useLocal) {
-      return NextResponse.json(await getLocalPhotos(gender))
+      const localPhotos = await getLocalPhotos(gender)
+      console.log(`Returning ${localPhotos.length} local photos`)
+      return NextResponse.json(localPhotos)
     }
     
     // If ratio is 100, use only Pexels
@@ -23,7 +27,10 @@ export async function GET(request: Request) {
     }
     
     // Mix both sources based on ratio
-    return await getMixedPhotos(gender, ratio)
+    console.log(`Mixing photos with ratio ${ratio}% Pexels, ${100-ratio}% local`)
+    const mixedPhotos = await getMixedPhotos(gender, ratio)
+    console.log(`Returning ${mixedPhotos.length} mixed photos`)
+    return NextResponse.json(mixedPhotos)
   } catch (error) {
     console.error("Error fetching photos:", error)
     return NextResponse.json({ error: `Failed to fetch photos: ${error.message}` }, { status: 500 })
@@ -112,11 +119,12 @@ async function getLocalPhotos(gender: string) {
   }
 }
 
-async function getPexelsPhotos(gender: string) {
+async function getPexelsPhotos(gender: string, returnRaw = false) {
   const apiKey = process.env.PEXELS_API_KEY
 
   if (!apiKey) {
     console.error("Pexels API key is missing")
+    if (returnRaw) return null
     return NextResponse.json({ error: "Pexels API key is not configured" }, { status: 500 })
   }
 
@@ -136,6 +144,7 @@ async function getPexelsPhotos(gender: string) {
   if (!response.ok) {
     const errorText = await response.text()
     console.error(`Pexels API error: ${response.status} ${response.statusText}`, errorText)
+    if (returnRaw) return null
     return NextResponse.json({ error: `Pexels API error: ${response.status}` }, { status: response.status })
   }
 
@@ -143,6 +152,7 @@ async function getPexelsPhotos(gender: string) {
 
   if (!data || !data.photos || !Array.isArray(data.photos) || data.photos.length === 0) {
     console.error("Invalid or empty response from Pexels API:", data)
+    if (returnRaw) return null
     return NextResponse.json({ error: "No photos received from Pexels API" }, { status: 500 })
   }
 
@@ -151,6 +161,7 @@ async function getPexelsPhotos(gender: string) {
   // Shuffle the photos to get random order
   const shuffledPhotos = shuffleArray(data.photos)
 
+  if (returnRaw) return shuffledPhotos
   return NextResponse.json(shuffledPhotos)
 }
 
@@ -172,19 +183,26 @@ async function getMixedPhotos(gender: string, pexelsRatio: number) {
     const pexelsCount = Math.round((totalPhotos * pexelsRatio) / 100)
     const localCount = totalPhotos - pexelsCount
     
+    console.log(`getMixedPhotos - total: ${totalPhotos}, pexels: ${pexelsCount}, local: ${localCount}`)
+    
     const photos: any[] = []
     
     // Get Pexels photos if API key is available
     if (process.env.PEXELS_API_KEY && pexelsCount > 0) {
       try {
-        const pexelsResponse = await getPexelsPhotos(gender)
-        if (pexelsResponse.status === 200) {
-          const pexelsData = await pexelsResponse.json()
-          photos.push(...pexelsData.slice(0, pexelsCount))
+        console.log(`Fetching ${pexelsCount} photos from Pexels...`)
+        const pexelsPhotos = await getPexelsPhotos(gender, true)
+        if (pexelsPhotos && Array.isArray(pexelsPhotos)) {
+          photos.push(...pexelsPhotos.slice(0, pexelsCount))
+          console.log(`Added ${Math.min(pexelsPhotos.length, pexelsCount)} Pexels photos`)
+        } else {
+          console.warn("No valid Pexels photos returned")
         }
       } catch (error) {
         console.warn("Pexels API error, falling back to local:", error)
       }
+    } else {
+      console.log(`Skipping Pexels (no API key or count is 0)`)
     }
     
     // Get local photos to fill the rest
@@ -192,7 +210,10 @@ async function getMixedPhotos(gender: string, pexelsRatio: number) {
     const remainingCount = totalPhotos - photos.length
     if (remainingCount > 0) {
       photos.push(...localPhotos.slice(0, remainingCount))
+      console.log(`Added ${Math.min(localPhotos.length, remainingCount)} local photos`)
     }
+    
+    console.log(`Final mixed photos count: ${photos.length}`)
     
     // Shuffle the combined array
     return shuffleArray(photos)

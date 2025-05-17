@@ -4,13 +4,68 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowRight, Globe, HardDrive } from "lucide-react"
+import { ArrowRight, Globe, HardDrive, MessageCircle, Sparkles } from "lucide-react"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Slider } from "@/components/ui/slider"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { motion, AnimatePresence } from "framer-motion"
 
 export default function Home() {
+  const router = useRouter()
   const [sourceRatio, setSourceRatio] = useState<number[]>([30]) // Default 30% Pexels, 70% Local
+  const [showChat, setShowChat] = useState(false)
+  const [chatMessages, setChatMessages] = useState<Array<{role: string, content: string}>>([])
+  const [customPrompt, setCustomPrompt] = useState("")
+  const [isTyping, setIsTyping] = useState(false)
+  const [selectedGender, setSelectedGender] = useState("female")
+  const [showStartButton, setShowStartButton] = useState(false)
+
+  const handleChatSubmit = async () => {
+    if (!customPrompt.trim()) return
+    
+    const currentPrompt = customPrompt
+    const newMessages = [...chatMessages, { role: "user", content: currentPrompt }]
+    setChatMessages(newMessages)
+    setCustomPrompt("")
+    setIsTyping(true)
+    
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messages: newMessages,
+          userPrompt: currentPrompt,
+          gender: selectedGender,
+        }),
+      })
+      
+      const data = await response.json()
+      setChatMessages([...newMessages, { 
+        role: "assistant", 
+        content: data.message 
+      }])
+      
+      // Show start button after first interaction
+      setShowStartButton(true)
+    } catch (error) {
+      setChatMessages([...newMessages, { 
+        role: "assistant", 
+        content: "あっ、ちょっと調子が悪いみたい...😅 でも大丈夫！下のボタンから始められるよ！" 
+      }])
+      setShowStartButton(true)
+    } finally {
+      setIsTyping(false)
+    }
+  }
+
+  const handleStartFromChat = () => {
+    router.push(`/swipe?gender=${selectedGender}&ratio=${sourceRatio[0]}`)
+  }
 
   return (
     <main className="min-h-screen flex flex-col">
@@ -30,7 +85,139 @@ export default function Home() {
           <div className="text-center">
             <h2 className="text-3xl font-extrabold tracking-tight">あなたの好みのスタイルを見つけましょう</h2>
             <p className="mt-4 text-lg text-muted-foreground">まずは、見たいファッションの性別を選んでください</p>
+            
+            {/* AIチャットボタン */}
+            <div className="mt-6">
+              <Button
+                onClick={() => setShowChat(!showChat)}
+                variant="outline"
+                className="rounded-full px-6 modern-button"
+              >
+                <MessageCircle className="h-4 w-4 mr-2" />
+                AIに相談
+              </Button>
+            </div>
           </div>
+
+          {/* AIチャット */}
+          <AnimatePresence>
+            {showChat && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="w-full glass-card p-6 mb-6"
+              >
+                <h3 className="font-semibold mb-4 flex items-center">
+                  <Sparkles className="h-5 w-5 mr-2" />
+                  スタイリストAI
+                </h3>
+                
+                {/* Initial greeting message */}
+                {chatMessages.length === 0 && (
+                  <div className="mb-4 text-center text-muted-foreground">
+                    <p className="text-sm">こんにちは！ファッションのお悩みはありますか？</p>
+                    <p className="text-sm">お気軽に相談してください！ 👗</p>
+                  </div>
+                )}
+                
+                {/* Chat Messages */}
+                {chatMessages.length > 0 && (
+                  <div className="mb-4 max-h-60 overflow-y-auto space-y-3">
+                    {chatMessages.map((msg, index) => (
+                      <div
+                        key={index}
+                        className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                      >
+                        <div
+                          className={`max-w-[80%] px-4 py-2 rounded-lg ${
+                            msg.role === "user"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted"
+                          }`}
+                        >
+                          <p className="text-sm">{msg.content}</p>
+                        </div>
+                      </div>
+                    ))}
+                    {isTyping && (
+                      <div className="flex justify-start">
+                        <div className="bg-muted px-4 py-2 rounded-lg">
+                          <div className="flex gap-1">
+                            <span className="w-2 h-2 bg-primary rounded-full animate-bounce"></span>
+                            <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{animationDelay: "0.1s"}}></span>
+                            <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{animationDelay: "0.2s"}}></span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* Gender Selection in Chat */}
+                <div className="mb-3 flex gap-2 justify-center">
+                  <Button
+                    size="sm"
+                    variant={selectedGender === "male" ? "default" : "outline"}
+                    onClick={() => setSelectedGender("male")}
+                    className="rounded-full"
+                  >
+                    メンズ
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={selectedGender === "female" ? "default" : "outline"}
+                    onClick={() => setSelectedGender("female")}
+                    className="rounded-full"
+                  >
+                    レディース
+                  </Button>
+                </div>
+                
+                {/* Input Area */}
+                <div className="flex gap-2">
+                  <Textarea
+                    value={customPrompt}
+                    onChange={(e) => setCustomPrompt(e.target.value)}
+                    placeholder="どんなスタイルをお探しですか？気軽に聞いてください！"
+                    className="stylish-input flex-1"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault()
+                        handleChatSubmit()
+                      }
+                    }}
+                  />
+                  <Button 
+                    onClick={handleChatSubmit} 
+                    disabled={!customPrompt.trim() || isTyping}
+                    className="rounded-full px-6 modern-button"
+                  >
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    送信
+                  </Button>
+                </div>
+                
+                {/* Start Button after consultation */}
+                {showStartButton && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-4 flex justify-center"
+                  >
+                    <Button
+                      onClick={handleStartFromChat}
+                      size="lg"
+                      className="rounded-full px-8 modern-button"
+                    >
+                      <ArrowRight className="mr-2 h-5 w-5" />
+                      {selectedGender === "male" ? "メンズ" : "レディース"}ファッションを見る
+                    </Button>
+                  </motion.div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* 画像ソース設定 */}
           <div className="mb-8 glass-card p-6 w-full max-w-md mx-auto mt-8">
