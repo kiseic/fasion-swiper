@@ -3,7 +3,8 @@ import OpenAI from "openai"
 import { readdirSync } from "fs"
 import path from "path"
 
-export const runtime = "edge"
+// Use nodejs runtime for fs operations
+export const runtime = "nodejs"
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,

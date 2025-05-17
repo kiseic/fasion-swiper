@@ -1,0 +1,25 @@
+{
+  "defaultAlt": "Fashion outfit",
+  "defaultTitle": "Fashion Style",
+  "categories": {
+    "casual": "Casual Style",
+    "formal": "Formal Wear",
+    "street": "Street Fashion",
+    "business": "Business Attire",
+    "trendy": "Trendy Look"
+  },
+  "genders": {
+    "male": "Men's Fashion",
+    "female": "Women's Fashion",
+    "unisex": "Unisex Style"
+  },
+  "imageData": {},
+  "generateAlt": {
+    "pattern": "{gender} {category} outfit",
+    "example": "Men's casual outfit"
+  },
+  "generateTitle": {
+    "pattern": "{category} - {gender} Fashion #{id}",
+    "example": "Casual Style - Men's Fashion #001"
+  }
+}

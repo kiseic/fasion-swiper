@@ -2,7 +2,8 @@ import { NextResponse } from "next/server"
 import { readdirSync } from "fs"
 import path from "path"
 
-export const runtime = "edge"
+// Use nodejs runtime for fs operations
+export const runtime = "nodejs"
 
 export async function GET(request: Request) {
   try {
@@ -11,10 +12,10 @@ export async function GET(request: Request) {
     const useLocal = url.searchParams.get("useLocal") === "true"
 
     if (useLocal) {
-      // ローカルイメージディレクトリから写真を取得
+      // Fetch photos from local image directory
       return NextResponse.json(await getLocalPhotos(gender))
     } else {
-      // Pexels APIから写真を取得
+      // Fetch photos from Pexels API
       return await getPexelsPhotos(gender)
     }
   } catch (error) {
@@ -23,19 +24,19 @@ export async function GET(request: Request) {
   }
 }
 
-// ローカルイメージディレクトリから写真を取得する関数
+// Function to get photos from local image directory
 async function getLocalPhotos(gender: string) {
   try {
-    // ローカルイメージディレクトリのパス
+    // Path to local images directory
     const imagesDir = path.join(process.cwd(), "images")
 
-    // ディレクトリ内のファイルを読み取る
+    // Read files from directory
     const files = readdirSync(imagesDir)
 
-    // 画像ファイルのみをフィルタリング
+    // Filter for image files only
     const imageFiles = files.filter((file) => /\.(jpg|jpeg|png|webp)$/i.test(file))
 
-    // 性別に基づいてフィルタリング
+    // Filter based on gender
     const filteredImages = imageFiles.filter((file) => {
       const lowerFile = file.toLowerCase()
       if (gender === "male" && lowerFile.includes("female")) return false
@@ -43,11 +44,11 @@ async function getLocalPhotos(gender: string) {
       return true
     })
 
-    // 最大30枚の画像をランダムに選択
+    // Select random 30 images maximum
     const shuffledImages = shuffleArray(filteredImages)
     const limitedResults = shuffledImages.slice(0, 30)
 
-    // Photo形式に変換
+    // Convert to Photo format
     return limitedResults.map((file, index) => {
       return {
         id: index + 1000,
@@ -69,7 +70,7 @@ async function getLocalPhotos(gender: string) {
           tiny: `/images/${file}`,
         },
         liked: false,
-        alt: file.replace(/\.(jpg|jpeg|png|webp)$/i, "").replace(/-/g, " "),
+        alt: generateAltText(file, gender),
       }
     })
   } catch (error) {
@@ -128,4 +129,23 @@ function shuffleArray<T>(array: T[]): T[] {
     ;[newArray[i], newArray[j]] = [newArray[j], newArray[i]]
   }
   return newArray
+}
+
+// Generate alt text for images based on filename and gender
+function generateAltText(filename: string, gender: string): string {
+  // Extract base name without extension and numbers
+  const baseName = filename.replace(/\.(jpg|jpeg|png|webp)$/i, "").replace(/_\d+$/, "")
+  
+  // Determine category from filename patterns
+  let category = "fashion"
+  if (baseName.includes("casual")) category = "casual"
+  else if (baseName.includes("formal")) category = "formal"
+  else if (baseName.includes("street")) category = "street"
+  else if (baseName.includes("business")) category = "business"
+  
+  // Get gender label
+  const genderLabel = gender === "male" ? "Men's" : "Women's"
+  
+  // Generate a descriptive alt text
+  return `${genderLabel} ${category} outfit`
 }
