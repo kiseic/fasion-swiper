@@ -5,6 +5,9 @@ import path from "path"
 // Use nodejs runtime for fs operations
 export const runtime = "nodejs"
 
+// Simple in-memory cache to track recently shown photos
+let recentPhotoIds = new Set<number>()
+
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url)
@@ -128,12 +131,25 @@ async function getPexelsPhotos(gender: string, returnRaw = false) {
     return NextResponse.json({ error: "Pexels API key is not configured" }, { status: 500 })
   }
 
-  // Build query with Japanese models and gender filter
-  const query = `japanese+asian+${gender}+fashion+outfit+full+body`
-
-  console.log(`Fetching photos from Pexels API with query: ${query}`)
+  // Build diverse queries to get more variety
+  const queries = [
+    `${gender} fashion portrait full body`,
+    `${gender} street style outfit`,
+    `${gender} casual wear fashion`,
+    `${gender} model fashion photography`,
+    `japanese ${gender} fashion style`,
+    `asian ${gender} fashion outfit`,
+    `${gender} clothing fashion photo`,
+    `${gender} fashion lookbook`,
+    `${gender} style outfit portrait`
+  ]
+  
+  // Randomly select a query for variety
+  const randomQuery = queries[Math.floor(Math.random() * queries.length)]
+  
+  console.log(`Fetching photos from Pexels API with query: ${randomQuery}`)
   const response = await fetch(
-    `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&orientation=portrait&per_page=30`,
+    `https://api.pexels.com/v1/search?query=${encodeURIComponent(randomQuery)}&orientation=portrait&per_page=80&page=${Math.floor(Math.random() * 5) + 1}`,
     {
       headers: {
         Authorization: apiKey,
@@ -158,8 +174,28 @@ async function getPexelsPhotos(gender: string, returnRaw = false) {
 
   console.log(`Received ${data.photos.length} photos from Pexels API`)
 
+  // Filter out recently shown photos
+  const filteredPhotos = data.photos.filter(photo => !recentPhotoIds.has(photo.id))
+  
+  // If we have too few new photos, reset the cache
+  if (filteredPhotos.length < 10) {
+    recentPhotoIds.clear()
+    filteredPhotos.push(...data.photos)
+  }
+  
   // Shuffle the photos to get random order
-  const shuffledPhotos = shuffleArray(data.photos)
+  const shuffledPhotos = shuffleArray(filteredPhotos)
+  
+  // Track these photos as recently shown (keep only last 200)
+  shuffledPhotos.slice(0, 30).forEach(photo => {
+    recentPhotoIds.add(photo.id)
+  })
+  
+  // Clean up old entries if cache gets too big
+  if (recentPhotoIds.size > 200) {
+    const idsArray = Array.from(recentPhotoIds)
+    recentPhotoIds = new Set(idsArray.slice(-150))
+  }
 
   if (returnRaw) return shuffledPhotos
   return NextResponse.json(shuffledPhotos)
