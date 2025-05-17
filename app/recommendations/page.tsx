@@ -182,10 +182,20 @@ export default function RecommendationsPage() {
         setIsFetchingRecommendations(false)
       } catch (error) {
         console.error("Chat error:", error)
-        setChatMessages([...newMessages, { 
-          role: "assistant", 
-          content: "あっ、ちょっと調子が悪いみたい...😅 もう一回試してみてくれる？" 
-        }])
+        // Check if the error response has more details
+        try {
+          const errorData = await response?.json()
+          console.error("Error response data:", errorData)
+          setChatMessages([...newMessages, { 
+            role: "assistant", 
+            content: errorData.message || "あっ、ちょっと調子が悪いみたい...😅 もう一回試してみてくれる？" 
+          }])
+        } catch {
+          setChatMessages([...newMessages, { 
+            role: "assistant", 
+            content: "あっ、ちょっと調子が悪いみたい...😅 もう一回試してみてくれる？" 
+          }])
+        }
       } finally {
         setIsTyping(false)
       }

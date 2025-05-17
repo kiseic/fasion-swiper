@@ -53,10 +53,21 @@ export default function Home() {
       // Show start button after first interaction
       setShowStartButton(true)
     } catch (error) {
-      setChatMessages([...newMessages, { 
-        role: "assistant", 
-        content: "あっ、ちょっと調子が悪いみたい...😅 でも大丈夫！下のボタンから始められるよ！" 
-      }])
+      console.error("Chat error:", error)
+      // Check if the error response has more details
+      try {
+        const errorData = await response?.json()
+        console.error("Error response data:", errorData)
+        setChatMessages([...newMessages, { 
+          role: "assistant", 
+          content: errorData.message || "あっ、ちょっと調子が悪いみたい...😅 でも大丈夫！下のボタンから始められるよ！" 
+        }])
+      } catch {
+        setChatMessages([...newMessages, { 
+          role: "assistant", 
+          content: "あっ、ちょっと調子が悪いみたい...😅 でも大丈夫！下のボタンから始められるよ！" 
+        }])
+      }
       setShowStartButton(true)
     } finally {
       setIsTyping(false)
