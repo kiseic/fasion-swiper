@@ -19,6 +19,8 @@ export default function RecommendationsPage() {
   const [gender, setGender] = useState<string>("female")
   const [customPrompt, setCustomPrompt] = useState<string>("")
   const [showPromptInput, setShowPromptInput] = useState<boolean>(false)
+  const [chatMessages, setChatMessages] = useState<Array<{role: string, content: string}>>([])
+  const [isTyping, setIsTyping] = useState<boolean>(false)
   const router = useRouter()
 
   const fetchRecommendations = async (photos: Photo[], prompt?: string) => {
@@ -131,8 +133,44 @@ export default function RecommendationsPage() {
 
   const handleCustomPrompt = async () => {
     if (likedPhotos.length > 0 && customPrompt.trim()) {
-      await fetchRecommendations(likedPhotos, customPrompt)
-      setShowPromptInput(false)
+      // Add user message
+      const newMessages = [...chatMessages, { role: "user", content: customPrompt }]
+      setChatMessages(newMessages)
+      setCustomPrompt("")
+      setIsTyping(true)
+      
+      // Get AI response from backend
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            messages: newMessages,
+            userPrompt: customPrompt,
+            gender: gender,
+          }),
+        })
+        
+        const data = await response.json()
+        
+        // Add AI response
+        setChatMessages([...newMessages, { 
+          role: "assistant", 
+          content: data.message 
+        }])
+        
+        // Get recommendations
+        await fetchRecommendations(likedPhotos, customPrompt)
+      } catch (error) {
+        setChatMessages([...newMessages, { 
+          role: "assistant", 
+          content: "あっ、ちょっと調子が悪いみたい...😅 もう一回試してみてくれる？" 
+        }])
+      } finally {
+        setIsTyping(false)
+      }
     }
   }
 
@@ -220,7 +258,7 @@ export default function RecommendationsPage() {
             onClick={() => setShowPromptInput(!showPromptInput)}
           >
             <Search className="h-4 w-4" />
-            <span className="hidden sm:inline">カスタム検索</span>
+            <span className="hidden sm:inline">AIに相談</span>
           </Button>
         </div>
       </header>
@@ -232,17 +270,63 @@ export default function RecommendationsPage() {
           exit={{ opacity: 0, height: 0 }}
           className="w-full py-4 px-4 sm:px-6 border-b bg-muted/30"
         >
-          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row gap-2">
-            <Textarea
-              value={customPrompt}
-              onChange={(e) => setCustomPrompt(e.target.value)}
-              placeholder="例: カジュアルでシンプルな春のコーデ、ストリートスタイル、など"
-              className="stylish-input flex-1"
-            />
-            <Button onClick={handleCustomPrompt} className="rounded-full px-6 modern-button">
-              <Sparkles className="mr-2 h-4 w-4" />
-              検索
-            </Button>
+          <div className="max-w-7xl mx-auto">
+            {/* Chat Messages */}
+            {chatMessages.length > 0 && (
+              <div className="mb-4 max-h-60 overflow-y-auto space-y-3">
+                {chatMessages.map((msg, index) => (
+                  <div
+                    key={index}
+                    className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={`max-w-[80%] px-4 py-2 rounded-lg ${
+                        msg.role === "user"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted"
+                      }`}
+                    >
+                      <p className="text-sm">{msg.content}</p>
+                    </div>
+                  </div>
+                ))}
+                {isTyping && (
+                  <div className="flex justify-start">
+                    <div className="bg-muted px-4 py-2 rounded-lg">
+                      <div className="flex gap-1">
+                        <span className="w-2 h-2 bg-primary rounded-full animate-bounce"></span>
+                        <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{animationDelay: "0.1s"}}></span>
+                        <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{animationDelay: "0.2s"}}></span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Input Area */}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Textarea
+                value={customPrompt}
+                onChange={(e) => setCustomPrompt(e.target.value)}
+                placeholder="どんなスタイルをお探しですか？気軽に聞いてください！"
+                className="stylish-input flex-1"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault()
+                    handleCustomPrompt()
+                  }
+                }}
+              />
+              <Button 
+                onClick={handleCustomPrompt} 
+                disabled={!customPrompt.trim() || isTyping}
+                className="rounded-full px-6 modern-button"
+              >
+                <Sparkles className="mr-2 h-4 w-4" />
+                送信
+              </Button>
+            </div>
           </div>
         </motion.div>
       )}
