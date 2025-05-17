@@ -1,4 +1,6 @@
+import { Suspense } from "react"
 import SwipeContainer from "@/components/swipe-container"
+import LoadingSpinner from "@/components/loading-spinner"
 
 export default function SwipePage() {
   return (
@@ -15,7 +17,9 @@ export default function SwipePage() {
 
       {/* メインコンテンツ */}
       <div className="flex-1 flex items-center justify-center">
-        <SwipeContainer />
+        <Suspense fallback={<LoadingSpinner />}>
+          <SwipeContainer />
+        </Suspense>
       </div>
 
       {/* フッター */}
