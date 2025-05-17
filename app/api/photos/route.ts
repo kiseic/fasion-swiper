@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { readdirSync } from "fs"
+import { readdirSync, readFileSync } from "fs"
 import path from "path"
 
 // Use nodejs runtime for fs operations
@@ -32,15 +32,42 @@ async function getLocalPhotos(gender: string) {
 
     // Read files from directory
     const files = readdirSync(imagesDir)
+    
+    // Load metadata
+    let metadata: any = {}
+    try {
+      const metadataPath = path.join(imagesDir, "metadata.json")
+      const metadataContent = readFileSync(metadataPath, "utf-8")
+      metadata = JSON.parse(metadataContent)
+    } catch (error) {
+      console.warn("Could not load metadata:", error)
+    }
 
     // Filter for image files only
     const imageFiles = files.filter((file) => /\.(jpg|jpeg|png|webp)$/i.test(file))
 
-    // Filter based on gender
+    // Filter based on gender using metadata patterns
     const filteredImages = imageFiles.filter((file) => {
+      // Check specific metadata first
+      if (metadata.imageData?.[file]?.gender) {
+        return metadata.imageData[file].gender === gender || metadata.imageData[file].gender === "unisex"
+      }
+      
       const lowerFile = file.toLowerCase()
-      if (gender === "male" && lowerFile.includes("female")) return false
-      if (gender === "female" && lowerFile.includes("male")) return false
+      
+      // Check exclude patterns first
+      const excludePatterns = metadata.excludePatterns?.[gender] || []
+      for (const pattern of excludePatterns) {
+        if (lowerFile.includes(pattern)) return false
+      }
+      
+      // Check include patterns
+      const includePatterns = metadata.genderPatterns?.[gender] || []
+      for (const pattern of includePatterns) {
+        if (lowerFile.includes(pattern)) return true
+      }
+      
+      // Default: include if no clear indicator (better to show more options)
       return true
     })
 

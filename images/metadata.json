@@ -13,13 +13,26 @@
     "female": "Women's Fashion",
     "unisex": "Unisex Style"
   },
-  "imageData": {},
-  "generateAlt": {
-    "pattern": "{gender} {category} outfit",
-    "example": "Men's casual outfit"
+  "genderPatterns": {
+    "male": ["men", "man", "male", "boy", "m_", "_m_", "mens"],
+    "female": ["women", "woman", "female", "girl", "lady", "f_", "_f_", "womens"],
+    "unisex": ["unisex", "neutral", "both"]
   },
-  "generateTitle": {
-    "pattern": "{category} - {gender} Fashion #{id}",
-    "example": "Casual Style - Men's Fashion #001"
-  }
+  "excludePatterns": {
+    "male": ["women", "woman", "female", "girl", "lady", "womens"],
+    "female": ["men", "man", "male", "boy", "mens"]
+  },
+  "imageData": {
+    "example1.jpg": {
+      "gender": "female",
+      "category": "casual",
+      "description": "Casual women's outfit"
+    },
+    "example2.jpg": {
+      "gender": "male",
+      "category": "formal",
+      "description": "Formal men's suit"
+    }
+  },
+  "note": "Add specific gender labels for each image in imageData for better accuracy. Use 'male', 'female', or 'unisex' as gender values."
 }
