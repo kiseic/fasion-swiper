@@ -21,11 +21,14 @@ export default function RecommendationsPage() {
   const [showPromptInput, setShowPromptInput] = useState<boolean>(false)
   const [chatMessages, setChatMessages] = useState<Array<{role: string, content: string}>>([])
   const [isTyping, setIsTyping] = useState<boolean>(false)
+  const [isFetchingRecommendations, setIsFetchingRecommendations] = useState<boolean>(false)
   const router = useRouter()
 
-  const fetchRecommendations = async (photos: Photo[], prompt?: string) => {
+  const fetchRecommendations = async (photos: Photo[], prompt?: string, keepCurrentState = false) => {
     try {
-      setLoading(true)
+      if (!keepCurrentState) {
+        setLoading(true)
+      }
       setError(null)
 
       console.log("Sending request to /api/recommend...")
@@ -70,7 +73,9 @@ export default function RecommendationsPage() {
       setError(`レコメンドの取得に失敗しました: ${err.message}`)
       return false
     } finally {
-      setLoading(false)
+      if (!keepCurrentState) {
+        setLoading(false)
+      }
     }
   }
 
@@ -171,8 +176,10 @@ export default function RecommendationsPage() {
           content: data.message 
         }])
         
-        // Get recommendations with the current prompt
-        await fetchRecommendations(likedPhotos, currentPrompt)
+        // Get recommendations with the current prompt without changing loading state
+        setIsFetchingRecommendations(true)
+        await fetchRecommendations(likedPhotos, currentPrompt, true)
+        setIsFetchingRecommendations(false)
       } catch (error) {
         console.error("Chat error:", error)
         setChatMessages([...newMessages, { 
@@ -381,6 +388,12 @@ export default function RecommendationsPage() {
                 <Badge variant="secondary" className="ml-2 rounded-full">
                   カスタム検索
                 </Badge>
+              )}
+              {isFetchingRecommendations && (
+                <div className="ml-2 flex items-center">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <span className="ml-1 text-sm text-muted-foreground">更新中...</span>
+                </div>
               )}
             </h2>
             <div className="recommendation-cards">
