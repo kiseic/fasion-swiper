@@ -72,6 +72,8 @@ export default function SwipeContainer() {
   }
 
   const swiped = (direction: string, photo: Photo, index: number) => {
+    console.log(`Swiped ${direction} - Photo: ${photo.id}, Index: ${index}, Current: ${currentIndex}`)
+    
     if (direction === "right") {
       setLikedPhotos((prev) => {
         const newLikedPhotos = [...prev, photo]
@@ -86,8 +88,10 @@ export default function SwipeContainer() {
       })
     }
 
-    setCurrentIndex(index - 1)
-    currentIndexRef.current = index - 1
+    const newIndex = index - 1
+    setCurrentIndex(newIndex)
+    currentIndexRef.current = newIndex
+    console.log(`Updated index to: ${newIndex}`)
 
     if (index === 0) {
       setDeckEmpty(true)
@@ -194,7 +198,7 @@ export default function SwipeContainer() {
           {photos.map((photo, index) => (
             <TinderCard
               ref={(el) => (childRefs.current[index] = el)}
-              key={photo.id}
+              key={`${photo.id}-${index}`}
               onSwipe={(dir) => swiped(dir, photo, index)}
               onCardLeftScreen={() => outOfFrame(index)}
               preventSwipe={["up", "down"]}
@@ -207,7 +211,7 @@ export default function SwipeContainer() {
                 transition={{ duration: 0.2 }}
                 className="swipe-card"
                 style={{
-                  backgroundImage: `url(${photo.src.large})`,
+                  backgroundImage: `url(${photo.src.large || photo.url})`,
                 }}
               >
                 <div className="card-content">
