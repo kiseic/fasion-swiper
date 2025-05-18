@@ -1,0 +1,10 @@
+{
+  "genderPatterns": {
+    "female": ["fimg", "fimage"],
+    "male": ["mimg", "mimage"]
+  },
+  "excludePatterns": {
+    "female": ["mimg", "mimage"],
+    "male": ["fimg", "fimage"]
+  }
+}
