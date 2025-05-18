@@ -43,11 +43,17 @@ export async function GET(request: Request) {
 // Function to get photos from local image directory
 async function getLocalPhotos(gender: string) {
   try {
-    // Path to local images directory
-    const imagesDir = path.join(process.cwd(), "images")
-
-    // Read files from directory
-    const files = readdirSync(imagesDir)
+    // Always use public/images directory for Vercel compatibility
+    const imagesDir = path.join(process.cwd(), "public", "images")
+    let files: string[] = []
+    
+    try {
+      files = readdirSync(imagesDir)
+      console.log(`Found ${files.length} files in ${imagesDir}`)
+    } catch (error) {
+      console.error("Could not find images directory:", error)
+      return []
+    }
     
     // Load metadata
     let metadata: any = {}
@@ -56,7 +62,14 @@ async function getLocalPhotos(gender: string) {
       const metadataContent = readFileSync(metadataPath, "utf-8")
       metadata = JSON.parse(metadataContent)
     } catch (error) {
-      console.warn("Could not load metadata:", error)
+      // Try loading from public/images if not found
+      try {
+        const publicMetadataPath = path.join(process.cwd(), "public", "images", "metadata.json")
+        const metadataContent = readFileSync(publicMetadataPath, "utf-8")
+        metadata = JSON.parse(metadataContent)
+      } catch (error2) {
+        console.warn("Could not load metadata from either location")
+      }
     }
 
     // Filter for image files only
@@ -93,24 +106,27 @@ async function getLocalPhotos(gender: string) {
 
     // Convert to Photo format
     return limitedResults.map((file, index) => {
+      // Always use public path for images
+      const urlPath = `/images/${file}`
+      
       return {
         id: index + 1000,
         width: 800,
         height: 1200,
-        url: `/images/${file}`,
+        url: urlPath,
         photographer: "Local Collection",
         photographer_url: "",
         photographer_id: 0,
         avg_color: "#CCCCCC",
         src: {
-          original: `/images/${file}`,
-          large2x: `/images/${file}`,
-          large: `/images/${file}`,
-          medium: `/images/${file}`,
-          small: `/images/${file}`,
-          portrait: `/images/${file}`,
-          landscape: `/images/${file}`,
-          tiny: `/images/${file}`,
+          original: urlPath,
+          large2x: urlPath,
+          large: urlPath,
+          medium: urlPath,
+          small: urlPath,
+          portrait: urlPath,
+          landscape: urlPath,
+          tiny: urlPath,
         },
         liked: false,
         alt: generateAltText(file, gender),
