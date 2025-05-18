@@ -5,6 +5,7 @@ export const runtime = "nodejs"
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  organization: process.env.OPENAI_ORG_ID, // 組織IDを追加
 })
 
 export async function POST(request: Request) {
@@ -17,7 +18,9 @@ export async function POST(request: Request) {
       userPrompt, 
       gender,
       hasApiKey: !!process.env.OPENAI_API_KEY,
-      apiKeyLength: process.env.OPENAI_API_KEY?.length
+      apiKeyLength: process.env.OPENAI_API_KEY?.length,
+      hasOrgId: !!process.env.OPENAI_ORG_ID,
+      orgIdLength: process.env.OPENAI_ORG_ID?.length
     })
 
     if (!process.env.OPENAI_API_KEY) {
