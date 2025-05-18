@@ -8,6 +8,7 @@ export const runtime = "nodejs"
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  organization: process.env.OPENAI_ORG_ID,
 })
 
 export async function POST(request: Request) {
@@ -83,7 +84,7 @@ async function getStyleKeywords(photoDescriptions: any[], customPrompt: string) 
     prompt += `\nReturn ONLY the keywords as a JSON array of strings, nothing else.`
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-3.5-turbo",
       messages: [
         {
           role: "system",
@@ -130,7 +131,7 @@ async function getStyleKeywords(photoDescriptions: any[], customPrompt: string) 
 async function getLocalPhotos(keywords: string[], gender: string) {
   try {
     // ローカルイメージディレクトリのパス
-    const imagesDir = path.join(process.cwd(), "images")
+    const imagesDir = path.join(process.cwd(), "public", "images")
 
     // ディレクトリ内のファイルを読み取る
     const files = readdirSync(imagesDir)
@@ -141,9 +142,14 @@ async function getLocalPhotos(keywords: string[], gender: string) {
     // キーワードと性別に基づいてフィルタリング
     const filteredImages = imageFiles.filter((file) => {
       const lowerFile = file.toLowerCase()
-      // 性別でフィルタリング
-      if (gender === "male" && lowerFile.includes("female")) return false
-      if (gender === "female" && lowerFile.includes("male")) return false
+      // 性別でフィルタリング（新しい命名規則に合わせる）
+      if (gender === "male") {
+        // 男性用画像のみ
+        return lowerFile.includes("mimg") || lowerFile.includes("mimage")
+      } else if (gender === "female") {
+        // 女性用画像のみ
+        return lowerFile.includes("fimg") || lowerFile.includes("fimage")
+      }
 
       // キーワードでフィルタリング（少なくとも1つのキーワードに一致）
       return keywords.some((keyword) => lowerFile.includes(keyword.toLowerCase()))
@@ -154,10 +160,13 @@ async function getLocalPhotos(keywords: string[], gender: string) {
     if (resultImages.length < 5) {
       resultImages = imageFiles.filter((file) => {
         const lowerFile = file.toLowerCase()
-        // 性別のみでフィルタリング
-        if (gender === "male" && lowerFile.includes("female")) return false
-        if (gender === "female" && lowerFile.includes("male")) return false
-        return true
+        // 性別のみでフィルタリング（新しい命名規則）
+        if (gender === "male") {
+          return lowerFile.includes("mimg") || lowerFile.includes("mimage")
+        } else if (gender === "female") {
+          return lowerFile.includes("fimg") || lowerFile.includes("fimage")
+        }
+        return false
       })
     }
 
